@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { CameraStats } from '../types';
-import { fetchCameras, startCamera, stopCamera } from '../services/supabase';
+import { fetchCameras, startCamera, stopCamera, API_BASE_URL } from '../services/supabase';
 import {
   Play,
   Pause,
@@ -84,8 +84,8 @@ export const LiveMonitoring: React.FC = () => {
 
           // Compute live MJPEG continuous stream URL from backend
           const streamUrl = isHeatmapActive
-            ? `/api/heatmap/${cam.camera_id}/stream`
-            : `/api/cameras/${cam.camera_id}/stream`;
+            ? `${API_BASE_URL}/heatmap/${cam.camera_id}/stream`
+            : `${API_BASE_URL}/cameras/${cam.camera_id}/stream`;
 
           return (
             <div

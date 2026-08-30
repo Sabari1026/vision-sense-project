@@ -1,0 +1,63 @@
+# ==============================================================================
+# VisionSense AI CCTV Retail Analytics System - Render Deployment Blueprint
+# ==============================================================================
+# Render Blueprint Specification: https://render.com/docs/blueprint-spec
+# ==============================================================================
+
+version: "1"
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. FastAPI Computer Vision Backend Web Service
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: visionsense-backend
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r backend/requirements.txt
+      python scripts/generate_sample_videos.py
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: YOLO_MODEL
+        value: yolo11n.pt
+      - key: USE_GPU
+        value: "false"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+
+  # ----------------------------------------------------------------------------
+  # 2. React Vite Frontend Static Site
+  # ----------------------------------------------------------------------------
+  - type: static
+    name: visionsense-frontend
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: ./frontend/dist
+    autoDeploy: true
+    envVars:
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+      - key: VITE_API_BASE_URL
+        fromService:
+          type: web
+          name: visionsense-backend
+          property: url
+    routes:
+      # Proxy /api requests to backend web service
+      - type: rewrite
+        source: /api/*
+        destination: https://visionsense-backend.onrender.com/api/*
+      # Client-side single-page application (SPA) routing
+      - type: rewrite
+        source: /*
+        destination: /index.html

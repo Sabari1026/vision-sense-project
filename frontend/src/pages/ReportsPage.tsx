@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Download, Printer, Sparkles, RefreshCw, Activity } from 'lucide-react';
+import { API_BASE_URL } from '../services/supabase';
 
 export const ReportsPage: React.FC = () => {
   const [reportType, setReportType] = useState<'daily' | 'weekly' | 'monthly'>('daily');
@@ -8,7 +9,7 @@ export const ReportsPage: React.FC = () => {
 
   const fetchReportData = async () => {
     try {
-      const res = await fetch(`/api/reports/generate?report_type=${reportType}&format=json`);
+      const res = await fetch(`${API_BASE_URL}/reports/generate?report_type=${reportType}&format=json`);
       if (res.ok) {
         const data = await res.json();
         setReportData(data);
@@ -27,7 +28,7 @@ export const ReportsPage: React.FC = () => {
   }, [reportType]);
 
   const downloadReport = (format: 'json' | 'csv') => {
-    window.open(`/api/reports/generate?report_type=${reportType}&format=${format}`, '_blank');
+    window.open(`${API_BASE_URL}/reports/generate?report_type=${reportType}&format=${format}`, '_blank');
   };
 
   const exec = reportData?.executive_summary;

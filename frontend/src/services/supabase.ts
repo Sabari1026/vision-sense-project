@@ -6,7 +6,7 @@ const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || 'dem
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-export const API_BASE_URL = '/api';
+export const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || '/api';
 
 export async function fetchCameras() {
   const res = await fetch(`${API_BASE_URL}/cameras`);

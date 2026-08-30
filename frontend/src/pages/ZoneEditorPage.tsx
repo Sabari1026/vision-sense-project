@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MapPin, Save, Trash2, Plus, RefreshCw, CheckCircle } from 'lucide-react';
 import { CameraZone } from '../types';
+import { API_BASE_URL } from '../services/supabase';
 
 export const ZoneEditorPage: React.FC = () => {
   const [selectedCam, setSelectedCam] = useState('11111111-1111-1111-1111-111111111111');
@@ -19,7 +20,7 @@ export const ZoneEditorPage: React.FC = () => {
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  const imageSrc = `/api/cameras/${selectedCam}/frame?t=${Date.now()}`;
+  const imageSrc = `${API_BASE_URL}/cameras/${selectedCam}/frame?t=${Date.now()}`;
 
   useEffect(() => {
     drawCanvas();

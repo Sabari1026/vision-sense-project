@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Upload, Film, Play, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
-import { startCamera, stopCamera } from '../services/supabase';
+import { startCamera, stopCamera, API_BASE_URL } from '../services/supabase';
 
 export const VideoManagerPage: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -17,7 +17,7 @@ export const VideoManagerPage: React.FC = () => {
     formData.append('file', selectedFile);
 
     try {
-      const res = await fetch(`/api/cameras/upload?camera_id=${selectedCam}`, {
+      const res = await fetch(`${API_BASE_URL}/cameras/upload?camera_id=${selectedCam}`, {
         method: 'POST',
         body: formData
       });

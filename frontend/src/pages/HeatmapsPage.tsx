@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Flame, Filter, Eye, Layers, Camera, Info } from 'lucide-react';
-import { fetchCameras } from '../services/supabase';
+import { fetchCameras, API_BASE_URL } from '../services/supabase';
 import { CameraStats } from '../types';
 
 export const HeatmapsPage: React.FC = () => {
@@ -82,7 +82,7 @@ export const HeatmapsPage: React.FC = () => {
         <div className="w-full h-[520px] bg-black rounded-xl overflow-hidden relative flex items-center justify-center border border-slate-800">
           {selectedCam ? (
             <img
-              src={`/api/heatmap/${selectedCam}/stream`}
+              src={`${API_BASE_URL}/heatmap/${selectedCam}/stream`}
               alt="Customer Movement Heatmap"
               className="w-full h-full object-contain"
             />
