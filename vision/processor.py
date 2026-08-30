@@ -16,11 +16,12 @@ from vision.reid import PersonReID
 
 class CameraStreamProcessor:
     """
-    Decoupled High-Precision CCTV Stream Processor with Real-Time Motion Extrapolation
-    and Modular Person Re-Identification (Re-ID).
+    Decoupled High-Precision CCTV Stream Processor with Real-Time Motion Interpolation,
+    Aspect-Ratio Invariant Temporal Smoothing, and ByteTrack State Management.
     """
 
-    def __init__(self, camera_id: str, camera_name: str, source_path: str, config: Dict[str, Any], loop: bool = True, shared_detector: Optional[YOLODetector] = None, shared_reid: Optional[PersonReID] = None):
+    def __init__(self, camera_id: str, camera_name: str, source_path: str, config: Dict[str, Any],
+                 loop: bool = True, shared_detector: Optional[YOLODetector] = None, shared_reid: Optional[PersonReID] = None):
         self.camera_id = camera_id
         self.camera_name = camera_name
         self.source_path = source_path
@@ -39,8 +40,19 @@ class CameraStreamProcessor:
                 imgsz=config.get('vision', {}).get('imgsz', 512)
             )
 
-        # Dedicated ByteTracker per camera stream
-        self.tracker = PersonTracker(tracker_type='bytetrack', smoothing_alpha=0.70)
+        # Dedicated ByteTracker per camera stream with Kalman filtering and temporal smoothing
+        smoothing_alpha = float(config.get('vision', {}).get('smoothing_alpha', config.get('BBOX_SMOOTHING_ALPHA', 0.65)))
+        enable_kalman = bool(config.get('vision', {}).get('enable_kalman', config.get('ENABLE_KALMAN', True)))
+        min_confirmation_frames = int(config.get('vision', {}).get('min_confirmation_frames', config.get('MIN_TRACK_CONFIRMATION_FRAMES', 2)))
+
+        self.tracker = PersonTracker(
+            tracker_type='bytetrack',
+            smoothing_alpha=smoothing_alpha,
+            enable_kalman=enable_kalman,
+            min_confirmation_frames=min_confirmation_frames,
+            camera_id=camera_id
+        )
+
         self.zone_manager = ZoneManager(camera_id)
         self.dwell_manager = DwellTimeManager(
             camera_id,
@@ -78,7 +90,7 @@ class CameraStreamProcessor:
         self.stream_thread: Optional[threading.Thread] = None
         self.ai_thread: Optional[threading.Thread] = None
 
-        # Buffers
+        # Buffers & Caches
         self.buffered_events: List[Dict[str, Any]] = []
         self.buffered_heatmap_points: List[Dict[str, Any]] = []
         self.track_age_cache: Dict[int, Tuple[str, float]] = {}
@@ -100,11 +112,11 @@ class CameraStreamProcessor:
 
         self.is_running = True
 
-        # Thread 1: Video Stream & Rendering Engine
+        # Thread 1: Video Stream & Rendering Engine (25-30 FPS)
         self.stream_thread = threading.Thread(target=self._stream_loop, daemon=True)
         self.stream_thread.start()
 
-        # Thread 2: YOLOv11 + ByteTrack AI Worker
+        # Thread 2: YOLOv11 + ByteTrack AI Worker (Async)
         self.ai_thread = threading.Thread(target=self._ai_worker_loop, daemon=True)
         self.ai_thread.start()
 
@@ -140,13 +152,13 @@ class CameraStreamProcessor:
             # Draw Zone polygons & counting lines
             annotated_frame = self.zone_manager.draw_zones(annotated_frame)
 
-            # Draw active ByteTrack tracks with motion extrapolation
+            # Draw active ByteTrack tracks with motion interpolation
             with self.tracks_lock:
                 active_tracks = self.tracked_objects.copy()
                 ai_time = self.last_ai_update_time
 
-            self.people_count = len(active_tracks)
-            dt_ai = min(0.3, max(0.0, current_timestamp - ai_time))
+            self.people_count = len([t for t in active_tracks if t.get('state') != 'TEMPORARILY_LOST'])
+            dt_ai = min(0.35, max(0.0, current_timestamp - ai_time))
 
             for obj in active_tracks:
                 track_id = obj['track_id']
@@ -156,12 +168,13 @@ class CameraStreamProcessor:
                 zone_name = obj.get('zone_name', 'General Area')
                 dwell = obj.get('dwell', 0)
                 global_id = obj.get('global_id')
+                state = obj.get('state', 'ACTIVE')
                 vx = obj.get('vx', 0.0)
                 vy = obj.get('vy', 0.0)
 
-                # Smooth velocity extrapolation
-                shift_x = int(round(vx * dt_ai * 15.0))
-                shift_y = int(round(vy * dt_ai * 15.0))
+                # Smooth velocity interpolation
+                shift_x = int(round(vx * dt_ai * 16.0))
+                shift_y = int(round(vy * dt_ai * 16.0))
 
                 x1 = max(0, min(w - 10, raw_bbox[0] + shift_x))
                 y1 = max(0, min(h - 20, raw_bbox[1] + shift_y))
@@ -171,22 +184,44 @@ class CameraStreamProcessor:
                 # Draw motion trail
                 if len(history) > 1:
                     for i in range(1, len(history)):
-                        cv2.line(annotated_frame, history[i-1], history[i], (0, 220, 255), 2)
+                        alpha_trail = float(i) / len(history)
+                        color_val = int(255 * alpha_trail)
+                        cv2.line(annotated_frame, history[i-1], history[i], (0, color_val, 255), 2, cv2.LINE_AA)
 
-                # Draw Bounding Box & HUD Label
-                cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (0, 255, 120), 2)
-
-                if global_id:
-                    label = f"Person #{track_id} [Global: {global_id}] ({int(conf * 100)}%)"
+                # Select theme color based on track state
+                if state == "TEMPORARILY_LOST":
+                    box_color = (0, 165, 255)  # Orange for predicted occlusion recovery
+                elif state == "RECOVERED":
+                    box_color = (255, 200, 0)  # Cyan for recovered track
                 else:
-                    label = f"Person #{track_id} ({int(conf * 100)}%)"
+                    box_color = (0, 255, 120)  # Emerald green for active track
 
-                sub_label = f"Dwell: {dwell}s | {zone_name}"
+                # Draw Smooth Bounding Box
+                cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), box_color, 2, cv2.LINE_AA)
+
+                # Corner accent markers
+                corner_len = min(16, min((x2 - x1) // 3, (y2 - y1) // 3))
+                if corner_len > 4:
+                    cv2.line(annotated_frame, (x1, y1), (x1 + corner_len, y1), (255, 255, 255), 3)
+                    cv2.line(annotated_frame, (x1, y1), (x1, y1 + corner_len), (255, 255, 255), 3)
+                    cv2.line(annotated_frame, (x2, y2), (x2 - corner_len, y2), (255, 255, 255), 3)
+                    cv2.line(annotated_frame, (x2, y2), (x2, y2 - corner_len), (255, 255, 255), 3)
+
+                # Construct HUD Label attached to bounding box header
+                if global_id:
+                    label = f"ID: {track_id} [Global: {global_id}] ({int(conf * 100)}%)"
+                else:
+                    label = f"ID: {track_id} ({int(conf * 100)}%)"
+
+                if state == "TEMPORARILY_LOST":
+                    sub_label = f"Dwell: {dwell}s | {zone_name} (Predicting...)"
+                else:
+                    sub_label = f"Dwell: {dwell}s | {zone_name}"
 
                 box_width = max(len(label), len(sub_label)) * 8 + 12
                 cv2.rectangle(annotated_frame, (x1, max(0, y1 - 38)), (x1 + box_width, y1), (15, 23, 42), -1)
-                cv2.rectangle(annotated_frame, (x1, max(0, y1 - 38)), (x1 + box_width, y1), (0, 255, 120), 1)
-                cv2.putText(annotated_frame, label, (x1 + 6, max(12, y1 - 22)), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (0, 255, 120), 1, cv2.LINE_AA)
+                cv2.rectangle(annotated_frame, (x1, max(0, y1 - 38)), (x1 + box_width, y1), box_color, 1)
+                cv2.putText(annotated_frame, label, (x1 + 6, max(12, y1 - 22)), cv2.FONT_HERSHEY_SIMPLEX, 0.42, box_color, 1, cv2.LINE_AA)
                 cv2.putText(annotated_frame, sub_label, (x1 + 6, max(24, y1 - 6)), cv2.FONT_HERSHEY_SIMPLEX, 0.38, (220, 225, 230), 1, cv2.LINE_AA)
 
             # Calculate Rolling Playback FPS
@@ -197,9 +232,9 @@ class CameraStreamProcessor:
                 self.fps_frame_count = 0
                 self.fps_calc_time = current_timestamp
 
-            # Render HUD stats
-            cv2.rectangle(annotated_frame, (10, 10), (370, 105), (15, 23, 42), -1)
-            cv2.rectangle(annotated_frame, (10, 10), (370, 105), (0, 255, 200), 1)
+            # Render Camera HUD Banner
+            cv2.rectangle(annotated_frame, (10, 10), (380, 105), (15, 23, 42), -1)
+            cv2.rectangle(annotated_frame, (10, 10), (380, 105), (0, 255, 200), 1)
             cv2.putText(annotated_frame, f"CAM: {self.camera_name}", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (0, 255, 200), 1, cv2.LINE_AA)
             cv2.putText(annotated_frame, f"Occupancy: {max(0, self.total_entries - self.total_exits)} | People Live: {self.people_count}", (20, 52), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 1, cv2.LINE_AA)
             cv2.putText(annotated_frame, f"Entries: {self.total_entries} | Exits: {self.total_exits} | FPS: {self.current_fps}", (20, 74), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 1, cv2.LINE_AA)
@@ -207,7 +242,7 @@ class CameraStreamProcessor:
 
             self.latest_annotated_frame = annotated_frame
 
-            # Pre-encode JPEG binary in worker thread for instant streaming
+            # Pre-encode JPEG binary in worker thread for instant zero-copy streaming
             ret_jpg, jpeg_buf = cv2.imencode('.jpg', annotated_frame, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
             if ret_jpg:
                 self.latest_jpeg_bytes = jpeg_buf.tobytes()
@@ -227,7 +262,7 @@ class CameraStreamProcessor:
                 # 1. YOLOv11 Person Detection
                 detections = self.detector.detect(frame)
 
-                # 2. ByteTrack Multi-Object Tracking
+                # 2. ByteTrack Multi-Object Tracking with Kalman Filtering & Temporal Smoothing
                 tracks = self.tracker.update(detections)
 
                 # 3. Process Zones, Line-Crossing, Dwell Time, Age, Re-ID
@@ -312,7 +347,8 @@ class CameraStreamProcessor:
                     'center': list(t['center']),
                     'confidence': t.get('confidence', 0.85),
                     'zone': t.get('zone_name', 'General Area'),
-                    'dwell_seconds': t.get('dwell', 0)
+                    'dwell_seconds': t.get('dwell', 0),
+                    'state': t.get('state', 'ACTIVE')
                 }
                 for t in self.tracked_objects
             ]
