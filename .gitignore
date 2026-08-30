@@ -1,0 +1,26 @@
+# Python & Environment
+__pycache__/
+*.py[cod]
+*$py.class
+*.env
+.venv/
+venv/
+ENV/
+env/
+
+# OpenCV & Model Cache
+*.pt
+*.onnx
+*.engine
+
+# Database & Storage
+*.db
+*.sqlite
+backend/local_visionsense.db
+
+# Node.js & React Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+.ds_store
+Thumbs.db
