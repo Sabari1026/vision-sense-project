@@ -63,6 +63,14 @@ def on_startup():
     print("==================================================================")
     print(" VisionSense AI CCTV Retail Analytics Platform Engine Initialized ")
     print("==================================================================")
+    import torch
+    import gc
+    try:
+        torch.set_num_threads(2)
+        torch.set_grad_enabled(False)
+    except Exception:
+        pass
+    gc.collect()
     # Auto start camera workers in Demo Mode
     camera_manager.start_all()
 

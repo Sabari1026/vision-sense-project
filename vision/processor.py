@@ -14,18 +14,21 @@ from vision.age_estimator import AgeEstimator
 class CameraStreamProcessor:
     """Master Multi-Threaded Processor for single CCTV Camera Feed."""
 
-    def __init__(self, camera_id: str, camera_name: str, source_path: str, config: Dict[str, Any], loop: bool = True):
+    def __init__(self, camera_id: str, camera_name: str, source_path: str, config: Dict[str, Any], loop: bool = True, shared_detector: Optional[YOLODetector] = None):
         self.camera_id = camera_id
         self.camera_name = camera_name
         self.source_path = source_path
         self.config = config
 
         self.source: CameraSource = FileCameraSource(source_path, name=camera_name, loop=loop)
-        self.detector = YOLODetector(
-            model_name=config.get('YOLO_MODEL', 'yolov8n.pt'),
-            confidence_threshold=config.get('vision', {}).get('confidence', 0.45),
-            use_gpu=config.get('USE_GPU', True)
-        )
+        if shared_detector is not None:
+            self.detector = shared_detector
+        else:
+            self.detector = YOLODetector(
+                model_name=config.get('YOLO_MODEL', 'yolo11n.pt'),
+                confidence_threshold=config.get('vision', {}).get('confidence', 0.45),
+                use_gpu=config.get('USE_GPU', True)
+            )
         self.tracker = PersonTracker(tracker_type=config.get('vision', {}).get('tracker', 'bytetrack'))
         self.zone_manager = ZoneManager(camera_id)
         self.dwell_manager = DwellTimeManager(

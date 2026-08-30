@@ -22,6 +22,13 @@ class MultiCameraManager:
         self.camera_stats: Dict[str, Dict[str, Any]] = {}
         self.lock = threading.Lock()
 
+        from vision.detector import YOLODetector
+        self.shared_detector = YOLODetector(
+            model_name=self.config.get('YOLO_MODEL', 'yolo11n.pt'),
+            confidence_threshold=self.config.get('vision', {}).get('confidence', 0.45),
+            use_gpu=self.config.get('USE_GPU', False)
+        )
+
         self._discover_and_setup_cameras()
 
     def _load_config(self) -> Dict[str, Any]:
@@ -61,7 +68,8 @@ class MultiCameraManager:
                 camera_id=cam_id,
                 camera_name=cam_name,
                 source_path=video_file,
-                config=self.config
+                config=self.config,
+                shared_detector=self.shared_detector
             )
             self.processors[cam_id] = processor
             self.is_running[cam_id] = False
