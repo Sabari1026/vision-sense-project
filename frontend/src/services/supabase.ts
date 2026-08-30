@@ -9,7 +9,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 const rawApiUrl = (import.meta as any).env?.VITE_API_BASE_URL;
 export const API_BASE_URL = rawApiUrl
   ? (rawApiUrl.startsWith('http') ? rawApiUrl : (rawApiUrl.startsWith('/') ? rawApiUrl : `https://${rawApiUrl}`))
-  : '/api';
+  : 'https://visionsense-backend-9833.onrender.com/api';
 
 export async function fetchCameras() {
   const res = await fetch(`${API_BASE_URL}/cameras`);
