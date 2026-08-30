@@ -12,7 +12,7 @@ services:
   # ----------------------------------------------------------------------------
   - type: web
     name: visionsense-backend
-    env: python
+    runtime: python
     region: oregon
     plan: free
     buildCommand: |
@@ -21,7 +21,7 @@ services:
       python scripts/generate_sample_videos.py
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /
-    autoDeploy: true
+    autoDeployTrigger: commit
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
@@ -37,11 +37,12 @@ services:
   # ----------------------------------------------------------------------------
   # 2. React Vite Frontend Static Site
   # ----------------------------------------------------------------------------
-  - type: static
+  - type: web
     name: visionsense-frontend
+    runtime: static
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: ./frontend/dist
-    autoDeploy: true
+    autoDeployTrigger: commit
     envVars:
       - key: VITE_SUPABASE_URL
         sync: false
@@ -51,7 +52,7 @@ services:
         fromService:
           type: web
           name: visionsense-backend
-          property: url
+          property: hostport
     routes:
       # Proxy /api requests to backend web service
       - type: rewrite
