@@ -14,7 +14,7 @@ import { SystemHealthPage } from './pages/SystemHealthPage';
 
 const MainApp: React.FC = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('videos');
 
   if (!user) {
     return <Login />;
