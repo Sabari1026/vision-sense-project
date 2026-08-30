@@ -2,8 +2,12 @@ import psutil
 import time
 import torch
 from fastapi import APIRouter
-from backend.app.services.camera_manager import camera_manager
-from backend.app.services.supabase_client import db_service
+try:
+    from backend.app.services.camera_manager import camera_manager
+    from backend.app.services.supabase_client import db_service
+except ModuleNotFoundError:
+    from app.services.camera_manager import camera_manager
+    from app.services.supabase_client import db_service
 
 router = APIRouter(prefix="/api/system", tags=["System"])
 

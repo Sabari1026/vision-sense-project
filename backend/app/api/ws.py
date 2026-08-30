@@ -1,7 +1,10 @@
 import asyncio
 import base64
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from backend.app.services.camera_manager import camera_manager
+try:
+    from backend.app.services.camera_manager import camera_manager
+except ModuleNotFoundError:
+    from app.services.camera_manager import camera_manager
 
 router = APIRouter(prefix="/ws", tags=["WebSockets"])
 

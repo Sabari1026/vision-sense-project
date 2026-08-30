@@ -1,16 +1,34 @@
 import os
+import sys
+
+# Bootstrap Python sys.path so 'backend' and 'app' modules resolve on any cloud host
+root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from backend.app.api.cameras import router as cameras_router
-from backend.app.api.analytics import router as analytics_router
-from backend.app.api.heatmaps import router as heatmaps_router
-from backend.app.api.reports import router as reports_router
-from backend.app.api.system import router as system_router
-from backend.app.api.ws import router as ws_router
-
-from backend.app.services.camera_manager import camera_manager
+try:
+    from backend.app.api.cameras import router as cameras_router
+    from backend.app.api.analytics import router as analytics_router
+    from backend.app.api.heatmaps import router as heatmaps_router
+    from backend.app.api.reports import router as reports_router
+    from backend.app.api.system import router as system_router
+    from backend.app.api.ws import router as ws_router
+    from backend.app.services.camera_manager import camera_manager
+except ModuleNotFoundError:
+    from app.api.cameras import router as cameras_router
+    from app.api.analytics import router as analytics_router
+    from app.api.heatmaps import router as heatmaps_router
+    from app.api.reports import router as reports_router
+    from app.api.system import router as system_router
+    from app.api.ws import router as ws_router
+    from app.services.camera_manager import camera_manager
 
 app = FastAPI(
     title="VisionSense AI CCTV Retail Analytics API",

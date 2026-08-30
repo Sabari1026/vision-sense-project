@@ -1,6 +1,9 @@
 from fastapi import APIRouter, Response, HTTPException
 from typing import Dict, Any, List
-from backend.app.services.camera_manager import camera_manager
+try:
+    from backend.app.services.camera_manager import camera_manager
+except ModuleNotFoundError:
+    from app.services.camera_manager import camera_manager
 
 router = APIRouter(prefix="/api/heatmap", tags=["Heatmaps"])
 

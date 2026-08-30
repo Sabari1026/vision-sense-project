@@ -4,8 +4,12 @@ import json
 import csv
 import io
 import time
-from backend.app.services.supabase_client import db_service
-from backend.app.services.camera_manager import camera_manager
+try:
+    from backend.app.services.supabase_client import db_service
+    from backend.app.services.camera_manager import camera_manager
+except ModuleNotFoundError:
+    from app.services.supabase_client import db_service
+    from app.services.camera_manager import camera_manager
 
 router = APIRouter(prefix="/api/reports", tags=["Reports"])
 

@@ -5,7 +5,10 @@ import cv2
 import yaml
 from typing import Dict, Any, List, Optional
 from vision.processor import CameraStreamProcessor
-from backend.app.services.supabase_client import db_service
+try:
+    from backend.app.services.supabase_client import db_service
+except ModuleNotFoundError:
+    from app.services.supabase_client import db_service
 
 class MultiCameraManager:
     """Manager controlling concurrent background processors for 4 CCTV Cameras."""
