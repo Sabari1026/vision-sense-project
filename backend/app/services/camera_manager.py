@@ -46,23 +46,20 @@ class MultiCameraManager:
 
         mp4_files = sorted([os.path.join(videos_dir, f) for f in os.listdir(videos_dir) if f.endswith('.mp4')])
 
-        for idx in range(1, 5):
+        camera_configs = [
+            {"file": "camera1.mp4", "name": "CAM-01 Main Entrance & Entry Line"},
+            {"file": "camera2.mp4", "name": "CAM-02 Apparel & Fashion Department"},
+            {"file": "camera3.mp4", "name": "CAM-03 Electronics & Showcase Hub"},
+            {"file": "camera4.mp4", "name": "CAM-04 Checkout Desks & POS"}
+        ]
+
+        for idx, cfg in enumerate(camera_configs, start=1):
             cam_id = f"{idx}{idx}{idx}{idx}{idx}{idx}{idx}{idx}-{idx}{idx}{idx}{idx}-{idx}{idx}{idx}{idx}-{idx}{idx}{idx}{idx}-{idx}{idx}{idx}{idx}{idx}{idx}{idx}{idx}{idx}{idx}{idx}{idx}"
-            
-            if idx <= len(mp4_files):
-                video_file = mp4_files[idx - 1]
-                filename = os.path.basename(video_file)
-                if "USA #2" in filename:
-                    cam_name = "Camera 01 - USA Retail Store #2"
-                elif "HDCCTVCameras" in filename or "HD CCTV" in filename:
-                    cam_name = "Camera 02 - HD CCTV Retail Store"
-                else:
-                    cam_name = f"Camera 0{idx} - {os.path.splitext(filename)[0][:20]}"
-            else:
-                video_file = os.path.join(videos_dir, f"camera{idx}.mp4")
-                if not os.path.exists(video_file) and mp4_files:
-                    video_file = mp4_files[0]
-                cam_name = f"Camera 0{idx}"
+            video_file = os.path.join(videos_dir, cfg["file"])
+            if not os.path.exists(video_file):
+                # Fallback to any mp4 in videos directory
+                video_file = mp4_files[idx - 1] if idx <= len(mp4_files) else (mp4_files[0] if mp4_files else "")
+            cam_name = cfg["name"]
 
             processor = CameraStreamProcessor(
                 camera_id=cam_id,
