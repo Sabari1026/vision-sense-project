@@ -63,11 +63,16 @@ class FileCameraSource(CameraSource):
             return False, None
 
         ret, frame = self.cap.read()
-        if not ret:
+        if not ret or frame is None:
             if self.loop:
                 # Loop back to beginning for continuous CCTV simulation
                 self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                 ret, frame = self.cap.read()
+                if not ret or frame is None:
+                    # If seek failed on Windows OpenCV, cleanly reopen video capture
+                    self.cap.release()
+                    self.cap = cv2.VideoCapture(self.source_path)
+                    ret, frame = self.cap.read()
             else:
                 return False, None
 

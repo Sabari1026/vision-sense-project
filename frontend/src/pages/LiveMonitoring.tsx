@@ -9,9 +9,8 @@ import {
   Flame,
   User,
   Clock,
-  Layers,
-  Sparkles,
   Radio,
+  Sparkles,
   RefreshCw,
   Video
 } from 'lucide-react';
@@ -21,7 +20,7 @@ const DEFAULT_CAMERAS: CameraStats[] = [
     camera_id: '11111111-1111-1111-1111-111111111111',
     camera_name: 'CAM-01 Main Entrance & Entry Line',
     status: 'LIVE',
-    fps: 25,
+    fps: 30,
     people_count: 2,
     entries: 14,
     exits: 9,
@@ -33,7 +32,7 @@ const DEFAULT_CAMERAS: CameraStats[] = [
     camera_id: '22222222-2222-2222-2222-222222222222',
     camera_name: 'CAM-02 Apparel & Fashion Department',
     status: 'LIVE',
-    fps: 25,
+    fps: 30,
     people_count: 3,
     entries: 28,
     exits: 22,
@@ -45,7 +44,7 @@ const DEFAULT_CAMERAS: CameraStats[] = [
     camera_id: '33333333-3333-3333-3333-333333333333',
     camera_name: 'CAM-03 Electronics & Showcase Hub',
     status: 'LIVE',
-    fps: 25,
+    fps: 30,
     people_count: 4,
     entries: 19,
     exits: 15,
@@ -57,7 +56,7 @@ const DEFAULT_CAMERAS: CameraStats[] = [
     camera_id: '44444444-4444-4444-4444-444444444444',
     camera_name: 'CAM-04 Checkout Desks & POS',
     status: 'LIVE',
-    fps: 25,
+    fps: 30,
     people_count: 2,
     entries: 31,
     exits: 29,
@@ -67,7 +66,7 @@ const DEFAULT_CAMERAS: CameraStats[] = [
   }
 ];
 
-// Single Live Camera Card with Auto-Refreshing Live Frame Stream & Canvas Fallback
+// Single Live Camera Card with Native MJPEG High-Speed Stream & Fallback
 const CameraCard: React.FC<{
   cam: CameraStats;
   fullscreenCam: string | null;
@@ -76,26 +75,33 @@ const CameraCard: React.FC<{
   onToggleHeatmap: (id: string) => void;
   onToggleStartStop: (id: string, currentStatus: string) => void;
 }> = ({ cam, fullscreenCam, setFullscreenCam, showHeatmap, onToggleHeatmap, onToggleStartStop }) => {
-  const [frameSrc, setFrameSrc] = useState<string>(
-    `${API_BASE_URL}/cameras/${cam.camera_id}/frame?t=${Date.now()}`
-  );
   const [hasStreamError, setHasStreamError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const isLive = cam.status === 'LIVE';
 
-  // Active frame refresh loop at ~10-15 FPS for real-time video stream viewing
+  // Smooth MJPEG streaming URL - Direct continuous browser stream
+  const streamSrc = showHeatmap
+    ? `${API_BASE_URL}/heatmap/${cam.camera_id}/stream?k=${retryKey}`
+    : `${API_BASE_URL}/cameras/${cam.camera_id}/stream?k=${retryKey}`;
+
+  // Reset stream error if status switches to LIVE
   useEffect(() => {
-    if (!isLive) return;
+    if (isLive) {
+      setHasStreamError(false);
+    }
+  }, [isLive, showHeatmap]);
 
-    const interval = setInterval(() => {
-      const endpoint = showHeatmap
-        ? `${API_BASE_URL}/heatmap/${cam.camera_id}/frame?t=${Date.now()}`
-        : `${API_BASE_URL}/cameras/${cam.camera_id}/frame?t=${Date.now()}`;
-      setFrameSrc(endpoint);
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, [isLive, showHeatmap, cam.camera_id]);
+  // Periodic error recovery in case backend restarted
+  useEffect(() => {
+    if (hasStreamError && isLive) {
+      const timer = setTimeout(() => {
+        setRetryKey(k => k + 1);
+        setHasStreamError(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [hasStreamError, isLive]);
 
   // Synthetic Animated CCTV Canvas Fallback if backend frame fetch is disconnected
   useEffect(() => {
@@ -114,11 +120,11 @@ const CameraCard: React.FC<{
       const height = canvas.height;
 
       // Dark CCTV background
-      ctx.fillStyle = '#181b22';
+      ctx.fillStyle = '#0f172a';
       ctx.fillRect(0, 0, width, height);
 
       // Floor grid lines
-      ctx.strokeStyle = '#272c38';
+      ctx.strokeStyle = '#1e293b';
       ctx.lineWidth = 1;
       for (let x = 0; x < width; x += 40) {
         ctx.beginPath();
@@ -146,37 +152,37 @@ const CameraCard: React.FC<{
 
       // Moving shoppers with bounding boxes
       const shoppers = [
-        { x: 100 + Math.sin(step * 0.03) * 60, y: 120 + Math.cos(step * 0.02) * 40, id: 1, label: 'Person #1 96%' },
-        { x: 280 + Math.cos(step * 0.025) * 80, y: 160 + Math.sin(step * 0.03) * 50, id: 2, label: 'Person #2 94%' },
-        { x: 200 + Math.sin(step * 0.015) * 50, y: 220 + Math.cos(step * 0.018) * 30, id: 3, label: 'Person #3 91%' }
+        { x: 120 + Math.sin(step * 0.03) * 60, y: 130 + Math.cos(step * 0.02) * 40, id: 101, label: 'Person #101 98%' },
+        { x: 300 + Math.cos(step * 0.025) * 80, y: 170 + Math.sin(step * 0.03) * 50, id: 102, label: 'Person #102 96%' },
+        { x: 220 + Math.sin(step * 0.015) * 50, y: 230 + Math.cos(step * 0.018) * 30, id: 103, label: 'Person #103 94%' }
       ];
 
       shoppers.forEach(s => {
         // Bounding Box
-        ctx.strokeStyle = '#10b981';
+        ctx.strokeStyle = '#00ff78';
         ctx.lineWidth = 2;
         ctx.strokeRect(s.x - 20, s.y - 35, 40, 70);
 
         // Label pill
-        ctx.fillStyle = '#10b981';
-        ctx.fillRect(s.x - 20, s.y - 50, 80, 15);
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(s.x - 20, s.y - 50, 85, 14);
+        ctx.fillStyle = '#00ff78';
         ctx.font = 'bold 9px sans-serif';
         ctx.fillText(s.label, s.x - 17, s.y - 39);
 
-        // Person Circle
+        // Center dot
         ctx.fillStyle = '#0284c7';
         ctx.beginPath();
-        ctx.arc(s.x, s.y, 8, 0, Math.PI * 2);
+        ctx.arc(s.x, s.y, 6, 0, Math.PI * 2);
         ctx.fill();
       });
 
       // OSD Header
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
       ctx.fillRect(0, 0, width, 30);
       ctx.fillStyle = '#38bdf8';
       ctx.font = 'bold 11px monospace';
-      ctx.fillText(`[LIVE CCTV] ${cam.camera_name.toUpperCase()}`, 12, 20);
+      ctx.fillText(`[RECONNECTING LIVE CCTV] ${cam.camera_name.toUpperCase()}`, 12, 20);
 
       animId = requestAnimationFrame(renderAnim);
     };
@@ -197,7 +203,7 @@ const CameraCard: React.FC<{
           <span className={`w-2.5 h-2.5 rounded-full ${isLive ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`}></span>
           <h3 className="font-bold text-sm text-slate-100">{cam.camera_name}</h3>
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-900 text-cyan-400 font-mono border border-slate-800">
-            {cam.fps || 25} FPS
+            {cam.fps || 30} FPS
           </span>
         </div>
 
@@ -239,11 +245,11 @@ const CameraCard: React.FC<{
           <>
             {!hasStreamError ? (
               <img
-                src={frameSrc}
+                key={streamSrc}
+                src={streamSrc}
                 alt={cam.camera_name}
-                className="w-full h-full object-contain"
+                className="w-full h-full object-contain select-none pointer-events-none"
                 onError={() => setHasStreamError(true)}
-                onLoad={() => setHasStreamError(false)}
               />
             ) : (
               <canvas
@@ -268,7 +274,7 @@ const CameraCard: React.FC<{
         )}
 
         {/* Live OSD Telemetry Pill */}
-        <div className="absolute bottom-3 left-3 bg-dark-900/85 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-700/80 flex items-center gap-3 text-xs shadow-lg">
+        <div className="absolute bottom-3 left-3 bg-dark-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-700/80 flex items-center gap-3 text-xs shadow-lg">
           <div className="flex items-center gap-1.5 text-cyan-400 font-bold">
             <User className="w-3.5 h-3.5" />
             <span>People: {cam.people_count || 0}</span>
@@ -351,7 +357,7 @@ export const LiveMonitoring: React.FC = () => {
             </span>
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Streaming real-time feeds from <code className="text-cyan-400 bg-slate-900 px-1.5 py-0.5 rounded">camera1.mp4</code> through <code className="text-cyan-400 bg-slate-900 px-1.5 py-0.5 rounded">camera4.mp4</code> with YOLO object detection, ByteTrack tracking, and live occupancy telemetry.
+            Streaming 4 synchronized CCTV channels with YOLOv11 person detection, ByteTrack tracking, and live occupancy telemetry.
           </p>
         </div>
 

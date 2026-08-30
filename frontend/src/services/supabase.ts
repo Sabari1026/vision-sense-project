@@ -26,6 +26,64 @@ export async function stopCamera(cameraId: string) {
   return res.json();
 }
 
+export async function addCamera(payload: { name: string; source: string; location?: string }) {
+  const res = await fetch(`${API_BASE_URL}/cameras`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  return res.json();
+}
+
+export async function updateCamera(cameraId: string, payload: { name?: string; source?: string; location?: string }) {
+  const res = await fetch(`${API_BASE_URL}/cameras/${cameraId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  return res.json();
+}
+
+export async function fetchLiveTracks() {
+  const res = await fetch(`${API_BASE_URL}/tracking/live`);
+  return res.json();
+}
+
+export async function fetchEvents(limit: number = 50, cameraId?: string) {
+  const url = cameraId ? `${API_BASE_URL}/events?limit=${limit}&camera_id=${cameraId}` : `${API_BASE_URL}/events?limit=${limit}`;
+  const res = await fetch(url);
+  return res.json();
+}
+
+export async function fetchZones(cameraId?: string) {
+  const url = cameraId ? `${API_BASE_URL}/zones?camera_id=${cameraId}` : `${API_BASE_URL}/zones`;
+  const res = await fetch(url);
+  return res.json();
+}
+
+export async function createZone(payload: { id?: string; camera_id: string; name: string; polygon: number[][]; zone_type?: string }) {
+  const res = await fetch(`${API_BASE_URL}/zones`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  return res.json();
+}
+
+export async function updateZone(zoneId: string, payload: { name?: string; polygon?: number[][]; camera_id?: string }) {
+  const res = await fetch(`${API_BASE_URL}/zones/${zoneId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  return res.json();
+}
+
+export async function deleteZone(zoneId: string) {
+  const res = await fetch(`${API_BASE_URL}/zones/${zoneId}`, { method: 'DELETE' });
+  return res.json();
+}
+
 export async function fetchAnalyticsOverview() {
   const res = await fetch(`${API_BASE_URL}/analytics/overview`);
   return res.json();

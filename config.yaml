@@ -1,13 +1,23 @@
-# VisionSense Global Configuration File
+# ==========================================================
+# VisionSense AI CCTV Retail Analytics Configuration
+# ==========================================================
 
 vision:
   YOLO_MODEL: "yolo11n.pt"
-  confidence: 0.45
-  iou: 0.5
-  inference_fps: 10
+  confidence: 0.25
+  iou: 0.45
+  imgsz: 512
+  inference_fps: 20
   tracker: "bytetrack"
-  lost_timeout_seconds: 5
+  lost_timeout_seconds: 5.0
   person_class_id: 0
+  show_trails: true
+  trail_length: 50
+
+reid:
+  enabled: false
+  similarity_threshold: 0.75
+  gallery_timeout_seconds: 300.0
 
 analytics:
   database_flush_seconds: 5
@@ -21,5 +31,5 @@ age_estimation:
 
 cameras:
   max_concurrent: 4
-  default_fps: 25
+  default_fps: 25.0
   default_resolution: [1280, 720]

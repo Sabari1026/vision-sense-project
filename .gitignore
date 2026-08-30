@@ -19,7 +19,10 @@ env/
 backend/local_visionsense.db
 
 # Generated test/demo videos
-videos/camera*.mp4
+videos/*.mp4
+data/videos/*.mp4
+!videos/.gitkeep
+!data/videos/.gitkeep
 
 # Node.js & React Frontend
 frontend/node_modules/
